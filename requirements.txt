@@ -1,0 +1,2 @@
+# no third party packages needed - everything here uses only the python
+# standard library (html.parser, json, math, http.server, unittest, etc)

@@ -30,10 +30,12 @@ STOPWORDS = {
     "while", "because", "until", "also", "it's", "one", "two",
 }
 
-# anything that isn't a letter, digit or underscore is treated as a word
-# boundary. this deliberately kills punctuation like commas, periods,
-# quotes, dashes, etc.
-_WORD_RE = re.compile(r"[a-z0-9]+")
+# anything that isn't a letter/digit (in any script - accented latin,
+# cyrillic, cjk, etc) is treated as a word boundary. `\w` is unicode-aware
+# in python 3, so this also kills punctuation like commas, periods, quotes,
+# dashes, and emoji, without cutting accented characters off of otherwise
+# ordinary words (an earlier ascii-only version turned "café" into "caf").
+_WORD_RE = re.compile(r"[^\W_]+", re.UNICODE)
 
 
 def tokenize(text, remove_stopwords=True):

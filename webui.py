@@ -19,7 +19,7 @@ import sys
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from search_engine.index import SearchIndex
+from search_engine.index import IndexLoadError, SearchIndex
 from search_engine.ranking import rank_documents
 from search_engine.snippet import make_snippet
 from search_engine.tokenizer import tokenize
@@ -126,7 +126,15 @@ def main():
         )
         return 1
 
-    index = SearchIndex.load(index_path)
+    try:
+        index = SearchIndex.load(index_path)
+    except IndexLoadError as exc:
+        print(
+            "error: %s - rebuild it with `python3 main.py index <directory>`"
+            % exc,
+            file=sys.stderr,
+        )
+        return 1
     handler = make_handler(index)
     server = HTTPServer(("localhost", port), handler)
     print("serving %d indexed docs at http://localhost:%d" % (

@@ -53,6 +53,12 @@ document, builds this structure, and writes it out as `index.json`.
 touches `data/` again, so searching stays fast no matter how many queries
 you run.
 
+Re-running `index` always rebuilds `index.json` from scratch off whatever
+is in the directory *right now* - it doesn't merge into the old index. So
+adding a file and re-indexing makes it searchable, and deleting a file and
+re-indexing makes it disappear from results. There's no incremental
+update; a full rebuild is cheap enough at this scale that it isn't needed.
+
 ### ranking - actual TF-IDF (`search_engine/ranking.py`)
 
 This is the part I actually cared about getting right. For a document and
@@ -154,15 +160,20 @@ $ python3 -m unittest discover -s tests -v
 
 Covers:
 - tokenizer correctness (lowercasing, punctuation stripping, stopword
-  removal)
-- inverted index construction on a small fixture corpus
+  removal, unicode text)
+- inverted index construction on a small fixture corpus, plus loading a
+  corrupted or wrong-shaped `index.json`
+- crawling edge cases - empty files, malformed html, binary garbage with
+  an `.html` extension, and rebuilding a directory after a file is removed
 - TF-IDF scoring - a document where a term shows up repeatedly and
   distinctively scores higher than one where it barely appears, and a
   document with none of the query terms scores exactly zero
+- CLI behavior for empty/whitespace/zero-result queries and for a missing
+  or corrupted index file
 - an end-to-end test that builds the index over the real `data/` sample
   set and checks that known queries return the expected top document
 
-All 20 tests pass on a clean checkout.
+All 36 tests pass on a clean checkout.
 
 ## project layout
 
@@ -192,3 +203,9 @@ tests/               unittest test suite
 - snippets grab the *first* matching word, not necessarily the most
   relevant sentence in a document
 - no spelling correction, synonyms, or query expansion of any kind
+- tokenizing is unicode-aware (accented latin, cyrillic, etc. are kept as
+  proper words, not chopped up), but there's no word segmentation for
+  languages that don't use spaces - a run of Japanese or Chinese text
+  indexes as one long token rather than separate words
+- a corrupted or hand-edited `index.json` fails with a clear error asking
+  you to rebuild it, rather than a python traceback

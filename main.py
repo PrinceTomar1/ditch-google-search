@@ -15,7 +15,7 @@ import argparse
 import os
 import sys
 
-from search_engine.index import SearchIndex
+from search_engine.index import IndexLoadError, SearchIndex
 from search_engine.ranking import rank_documents
 from search_engine.snippet import make_snippet
 from search_engine.tokenizer import tokenize
@@ -49,7 +49,16 @@ def cmd_search(args):
         )
         return 1
 
-    index = SearchIndex.load(args.index_path)
+    try:
+        index = SearchIndex.load(args.index_path)
+    except IndexLoadError as exc:
+        print(
+            "error: %s - rebuild it with `python3 main.py index <directory>`"
+            % exc,
+            file=sys.stderr,
+        )
+        return 1
+
     query_terms = tokenize(args.query)
 
     if not query_terms:

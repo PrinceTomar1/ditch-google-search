@@ -35,6 +35,20 @@ class TokenizerTests(unittest.TestCase):
     def test_numbers_are_kept_as_tokens(self):
         self.assertEqual(tokenize("top 10 tips"), ["top", "10", "tips"])
 
+    def test_accented_words_stay_whole(self):
+        # an ascii-only [a-z0-9] regex would chop these into "caf",
+        # "r"/"sum", "na"/"ve" - accented letters are still letters
+        self.assertEqual(
+            tokenize("Café résumé naïve"), ["café", "résumé", "naïve"])
+
+    def test_non_latin_scripts_are_not_dropped(self):
+        tokens = tokenize("Привет мир")
+        self.assertEqual(tokens, ["привет", "мир"])
+
+    def test_emoji_and_symbols_are_stripped_not_crashed_on(self):
+        tokens = tokenize("rocket 🚀🚀🚀 launch")
+        self.assertEqual(tokens, ["rocket", "launch"])
+
 
 if __name__ == "__main__":
     unittest.main()

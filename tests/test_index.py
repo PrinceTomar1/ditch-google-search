@@ -2,7 +2,7 @@ import os
 import tempfile
 import unittest
 
-from search_engine.index import SearchIndex
+from search_engine.index import IndexLoadError, SearchIndex
 
 
 class InvertedIndexTests(unittest.TestCase):
@@ -51,6 +51,47 @@ class InvertedIndexTests(unittest.TestCase):
         self.assertEqual(loaded.postings, index.postings)
         self.assertEqual(loaded.doc_lengths, index.doc_lengths)
         self.assertEqual(loaded.doc_texts, index.doc_texts)
+
+    def test_load_raises_clean_error_on_invalid_json(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "index.json")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("{not valid json")
+            with self.assertRaises(IndexLoadError):
+                SearchIndex.load(path)
+
+    def test_load_raises_clean_error_on_wrong_schema(self):
+        # valid json, but not shaped like an index (e.g. hand-edited or
+        # from an unrelated file) - should still fail cleanly, not with
+        # a raw KeyError
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "index.json")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write('{"unrelated": "data"}')
+            with self.assertRaises(IndexLoadError):
+                SearchIndex.load(path)
+
+    def test_rebuild_from_directory_drops_deleted_files(self):
+        # index should fully rebuild from the directory's current contents
+        # each time, not accumulate stale entries for files that were
+        # removed since the last run
+        with tempfile.TemporaryDirectory() as tmp:
+            first_path = os.path.join(tmp, "a.txt")
+            second_path = os.path.join(tmp, "b.txt")
+            with open(first_path, "w", encoding="utf-8") as f:
+                f.write("alpha document about foxes")
+            with open(second_path, "w", encoding="utf-8") as f:
+                f.write("beta document about wolves")
+
+            first_index = SearchIndex.build_from_directory(tmp)
+            self.assertIn("a.txt", first_index.doc_ids)
+            self.assertIn("b.txt", first_index.doc_ids)
+
+            os.remove(first_path)
+            second_index = SearchIndex.build_from_directory(tmp)
+            self.assertNotIn("a.txt", second_index.doc_ids)
+            self.assertNotIn("a.txt", second_index.postings.get("foxes", {}))
+            self.assertIn("b.txt", second_index.doc_ids)
 
 
 if __name__ == "__main__":

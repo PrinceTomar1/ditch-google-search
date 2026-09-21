@@ -11,6 +11,13 @@ from search_engine.crawler import crawl_directory
 from search_engine.tokenizer import tokenize
 
 
+class IndexLoadError(Exception):
+    """Raised when index.json is missing, truncated, not valid json, or
+    doesn't have the shape a SearchIndex expects. Callers (main.py,
+    webui.py) catch this to print a clean message instead of a
+    traceback."""
+
+
 class SearchIndex:
     def __init__(self):
         # term -> {doc_id: term_frequency}
@@ -79,5 +86,15 @@ class SearchIndex:
     @classmethod
     def load(cls, path):
         with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return cls.from_dict(data)
+            try:
+                data = json.load(f)
+            except json.JSONDecodeError as exc:
+                raise IndexLoadError(
+                    "%s is not valid json (%s)" % (path, exc)) from exc
+
+        try:
+            return cls.from_dict(data)
+        except (KeyError, TypeError) as exc:
+            raise IndexLoadError(
+                "%s doesn't look like a search index (%s)" % (path, exc)
+            ) from exc
